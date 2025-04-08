@@ -19,6 +19,7 @@ classifiers = [
 dependencies = [
     "anthropic",
     "python-dotenv",
+    "tqdm",
 ]
 
 [project.optional-dependencies]
