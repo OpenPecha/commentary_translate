@@ -29,9 +29,10 @@ With the Tibetan Buddhist Commentary Translation Library, you can translate Tibe
 Before using this library, ensure you have:
 * Python 3.8+
 * Anthropic API key with access to Claude models
-* Required Python packages (installed via pip):
+* Required Python packages (automatically installed with this library):
   * anthropic
   * python-dotenv
+  * tqdm
 
 ## Instructions for use
 Get started with the Tibetan Buddhist Commentary Translation Library by setting up your environment and API key.
@@ -46,7 +47,7 @@ Get started with the Tibetan Buddhist Commentary Translation Library by setting 
    Or install from source:
 
    ```bash
-   git clone https://github.com/yourusername/claude-translator.git
+   git clone https://github.com/OpenPecha/claude-translator.git
    cd claude-translator
    pip install -e .
    ```
@@ -123,7 +124,7 @@ Get started with the Tibetan Buddhist Commentary Translation Library by setting 
    )
    ```
 
-2. Multithreaded processing:
+2. Multithreaded processing with progress tracking:
 
    ```python
    translated_pairs = translate_commentaries(
@@ -131,6 +132,9 @@ Get started with the Tibetan Buddhist Commentary Translation Library by setting 
        target_language="English",
        num_threads=8  # Increase for larger datasets
    )
+   
+   # The library automatically shows a progress bar with thread usage information
+   # Example: Translating to English [6/8 threads] (42/100 done)
    ```
 
 ### Troubleshooting
