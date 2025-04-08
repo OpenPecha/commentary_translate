@@ -1,0 +1,117 @@
+"""
+Core translator module for the Tibetan Buddhist Commentary Translation Library.
+"""
+
+import os
+from typing import List, Dict, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dotenv import load_dotenv
+
+from .claude_api import translate_with_claude
+from .utils import get_default_few_shot_examples, setup_logging
+
+logger = setup_logging()
+
+def translate_commentaries(
+    commentary_root_pairs: List[Dict[str, str]],
+    target_language: str,
+    few_shot_examples: Optional[List[Dict]] = None,
+    num_threads: int = 4,
+    api_key: Optional[str] = None,
+) -> List[Dict[str, str]]:
+    """
+    Translate a list of Tibetan commentary-root pairs into the specified target language.
+    
+    Args:
+        commentary_root_pairs: List of dictionaries with 'root' and 'commentary' keys
+        target_language: Target language name (e.g., 'English', 'Chinese', 'French')
+        few_shot_examples: Optional multi-turn conversation examples to guide translation style
+                          (if None, default examples will be used)
+        num_threads: Number of threads for parallel processing
+        api_key: Optional Claude API key (if not provided, will read from .env)
+        
+    Returns:
+        List of dictionaries with 'root' (unchanged) and 'commentary' (translated) keys
+    """
+    # Load default examples if none provided
+    if few_shot_examples is None:
+        few_shot_examples = get_default_few_shot_examples(target_language)
+    
+    # Get API key from environment if not provided
+    if api_key is None:
+        load_dotenv()
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("API key not provided and not found in .env file")
+    
+    # Prepare results list with same length as input
+    results = [None] * len(commentary_root_pairs)
+    
+    # Filter tasks - skip empty commentaries
+    translation_tasks = []
+    for idx, pair in enumerate(commentary_root_pairs):
+        if pair.get("commentary", "") == "":
+            # Keep empty commentaries as-is
+            results[idx] = {"root": pair.get("root", ""), "commentary": ""}
+        else:
+            # Add to translation tasks
+            translation_tasks.append((idx, pair))
+    
+    # Process translations in parallel with thread pool
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = {
+            executor.submit(
+                _translate_single_commentary,
+                pair,
+                target_language,
+                few_shot_examples,
+                api_key
+            ): idx for idx, pair in translation_tasks
+        }
+        
+        for future in as_completed(futures):
+            idx = futures[future]
+            try:
+                translated_commentary = future.result()
+                results[idx] = {
+                    "root": commentary_root_pairs[idx].get("root", ""),
+                    "commentary": translated_commentary
+                }
+            except Exception as e:
+                logger.error(f"Translation failed at index {idx}: {str(e)}")
+                # Preserve original on failure
+                results[idx] = commentary_root_pairs[idx]
+    
+    return results
+
+def _translate_single_commentary(
+    pair: Dict[str, str],
+    target_language: str,
+    few_shot_examples: List[Dict],
+    api_key: str
+) -> str:
+    """
+    Helper function to translate a single commentary.
+    
+    Args:
+        pair: Dictionary containing 'root' and 'commentary' keys
+        target_language: Target language for translation
+        few_shot_examples: Few-shot learning examples to guide translation
+        api_key: Anthropic API key
+        
+    Returns:
+        Translated commentary text
+    """
+    try:
+        # Call the Claude API to translate the commentary
+        translated_text = translate_with_claude(
+            root_text=pair.get("root", ""),
+            commentary_text=pair.get("commentary", ""),
+            target_language=target_language,
+            few_shot_examples=few_shot_examples,
+            api_key=api_key
+        )
+        return translated_text
+    except Exception as e:
+        logger.error(f"Error translating commentary: {str(e)}")
+        raise
