@@ -21,7 +21,7 @@
 
 ## Project description
 
-With the Tibetan Buddhist Commentary Translation Library, you can translate Tibetan Buddhist commentaries into multiple languages while preserving the root texts. This library efficiently processes commentary translations in parallel while ensuring empty commentary strings remain empty in the output.
+With the Tibetan Buddhist Commentary Translation Library, you can translate Tibetan Buddhist commentaries into multiple languages while preserving both the root texts and original commentary text. This library efficiently processes commentary translations in parallel while ensuring empty commentary strings remain empty in the output. The library returns a data structure that contains the original text in the "commentary" field and the translated text in the "commentary_translation" field.
 
 
 
@@ -94,9 +94,27 @@ Get started with the Tibetan Buddhist Commentary Translation Library by setting 
    # Display results
    for pair in translated_pairs:
        print(f"Root: {pair['root']}")
-       print(f"Translated Commentary: {pair['commentary']}")
+       print(f"Original Commentary: {pair['commentary']}")
+       print(f"Translated Commentary: {pair['commentary_translation']}")
        print()
    ```
+
+### Output Structure
+
+The library returns a list of dictionaries with the following structure:
+
+```python
+[
+    {
+        "root": "Original Tibetan root text (unchanged)",
+        "commentary": "Original Tibetan commentary text (unchanged)",
+        "commentary_translation": "Translated commentary text in target language"
+    },
+    # More items...
+]
+```
+
+For empty commentaries, both "commentary" and "commentary_translation" will be empty strings.
 
 ### Advanced features
 

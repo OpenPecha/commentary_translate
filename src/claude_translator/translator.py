@@ -33,7 +33,8 @@ def translate_commentaries(
         api_key: Optional Claude API key (if not provided, will read from .env)
         
     Returns:
-        List of dictionaries with 'root' (unchanged) and 'commentary' (translated) keys
+        List of dictionaries with 'root' (unchanged), 'commentary' (original text), 
+        and 'commentary_translation' (translated text) keys
     """
     # Load default examples if none provided
     if few_shot_examples is None:
@@ -54,7 +55,11 @@ def translate_commentaries(
     for idx, pair in enumerate(commentary_root_pairs):
         if pair.get("commentary", "") == "":
             # Keep empty commentaries as-is
-            results[idx] = {"root": pair.get("root", ""), "commentary": ""}
+            results[idx] = {
+                "root": pair.get("root", ""), 
+                "commentary": "", 
+                "commentary_translation": ""
+            }
         else:
             # Add to translation tasks
             translation_tasks.append((idx, pair))
@@ -114,12 +119,18 @@ def translate_commentaries(
                         translated_commentary = future.result()
                         results[idx] = {
                             "root": commentary_root_pairs[idx].get("root", ""),
-                            "commentary": translated_commentary
+                            "commentary": commentary_root_pairs[idx].get("commentary", ""),
+                            "commentary_translation": translated_commentary
                         }
                     except Exception as e:
                         logger.error(f"Translation failed at index {idx}: {str(e)}")
                         # Preserve original on failure
-                        results[idx] = commentary_root_pairs[idx]
+                        original_pair = commentary_root_pairs[idx]
+                        results[idx] = {
+                            "root": original_pair.get("root", ""),
+                            "commentary": original_pair.get("commentary", ""),
+                            "commentary_translation": ""  # Empty on failure
+                        }
                     
                     # Submit a new task if there are more to process
                     if remaining_tasks:

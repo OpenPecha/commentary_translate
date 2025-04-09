@@ -89,13 +89,13 @@ def main():
         num_threads=4,  # Use more threads for better performance
         api_key=api_key
     )
-
     # Display the results
     print("\nChinese Translations:")
     for i, item in enumerate(chinese_translations):
         print(f"\nExample {i+1}:")
         print(f"Root (untranslated): {item['root']}")
-        print(f"Commentary (translated): {item['commentary']}")
+        print(f"Commentary (original): {item['commentary']}")
+        print(f"Commentary (translated): {item['commentary_translation']}")
 
     print("\nNote: Empty commentaries remain empty in the output, as required.")
     print("Using more threads improves performance with larger datasets.")

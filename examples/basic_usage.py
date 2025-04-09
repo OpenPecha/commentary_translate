@@ -39,14 +39,15 @@ def main():
     for i, item in enumerate(english_translations):
         print(f"\nExample {i+1}:")
         print(f"Root (untranslated): {item['root']}")
-        print(f"Commentary (translated): {item['commentary']}")
+        print(f"Commentary (original): {item['commentary']}")
+        print(f"Commentary (translated): {item['commentary_translation']}")
 
     # Translate to French
     print("\n\nTranslating to French...")
     french_translations = translate_commentaries(
         commentary_root_pairs=sample_data,
         target_language="French",
-        num_threads=2
+        num_threads=4
     )
 
     # Display the results
@@ -54,7 +55,8 @@ def main():
     for i, item in enumerate(french_translations):
         print(f"\nExample {i+1}:")
         print(f"Root (untranslated): {item['root']}")
-        print(f"Commentary (translated): {item['commentary']}")
+        print(f"Commentary (original): {item['commentary']}")
+        print(f"Commentary (translated): {item['commentary_translation']}")
 
 if __name__ == "__main__":
     main()
