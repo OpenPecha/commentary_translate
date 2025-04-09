@@ -155,6 +155,22 @@ For empty commentaries, both "commentary" and "commentary_translation" will be e
    # Example: Translating to English [6/8 threads] (42/100 done)
    ```
 
+3. Translation caching to save API calls and speed up processing:
+
+   ```python
+   # Enable caching (enabled by default)
+   translated_pairs = translate_commentaries(
+       commentary_root_pairs=dataset,
+       target_language="English",
+       use_cache=True,
+       cache_dir="./my_translation_cache",  # Custom cache directory
+       cache_ttl=604800  # Cache expiration in seconds (1 week)
+   )
+   
+   # Subsequent calls with the same text will use the cache
+   # and complete much faster without making API calls
+   ```
+
 ### Troubleshooting
 
 <table>

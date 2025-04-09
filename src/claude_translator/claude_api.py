@@ -42,10 +42,11 @@ def translate_with_claude(
             "content": [
                 {
                     "type": "text",
-                    "text": f"Root text: {example['human'].get('root', '')}\n\nCommentary: {example['human'].get('commentary', '')}\n\nPlease translate the commentary to {example['human'].get('target_language', target_language)}. Leave the root text untranslated."
+                    "text": f"Root text: {example['human'].get('root', '')}\n\nCommentary: {example['human'].get('commentary', '')}\n\nTranslate only the commentary to {example['human'].get('target_language', target_language)}. Return just the translation without any other text. Do not include the original root text or commentary."
                 }
             ]
         })
+        
         messages.append({
             "role": "assistant",
             "content": [
@@ -57,12 +58,18 @@ def translate_with_claude(
         })
     
     # Add the actual translation request
+    # For empty commentary, we need a special case
+    if not commentary_text.strip():
+        # If commentary is empty, return empty right away without calling API
+        return ""
+        
+    # Otherwise prepare the message
     messages.append({
         "role": "user",
         "content": [
             {
                 "type": "text",
-                "text": f"Root text: {root_text}\n\nCommentary: {commentary_text}\n\nPlease translate the commentary to {target_language}. Leave the root text untranslated."
+                "text": f"Root text: {root_text}\n\nCommentary: {commentary_text}\n\nTranslate only the commentary to {target_language}. Return just the translation without any other text. Do not include the original root text or commentary."
             }
         ]
     })
@@ -77,9 +84,8 @@ def translate_with_claude(
                 messages=messages
             )
             
-            # Extract the response text
-            translated_text = response.content[0].text
-            return translated_text
+            # Simply return the response text
+            return response.content[0].text
         
         except (anthropic.APIError, anthropic.RateLimitError) as e:
             if attempt < max_retries - 1:

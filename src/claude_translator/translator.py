@@ -4,7 +4,7 @@ Core translator module for the Tibetan Buddhist Commentary Translation Library.
 
 import os
 import concurrent.futures
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union, Any
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
 from tqdm import tqdm
@@ -20,6 +20,9 @@ def translate_commentaries(
     few_shot_examples: Optional[List[Dict]] = None,
     num_threads: int = 4,
     api_key: Optional[str] = None,
+    use_cache: bool = True,
+    cache_dir: str = "./translation_cache",
+    cache_ttl: Optional[int] = None
 ) -> List[Dict[str, str]]:
     """
     Translate a list of Tibetan commentary-root pairs into the specified target language.
@@ -31,6 +34,9 @@ def translate_commentaries(
                           (if None, default examples will be used)
         num_threads: Number of threads for parallel processing
         api_key: Optional Claude API key (if not provided, will read from .env)
+        use_cache: Whether to cache translation results (default: True)
+        cache_dir: Directory to store cached translations
+        cache_ttl: Time-to-live for cache entries in seconds (None = no expiration)
         
     Returns:
         List of dictionaries with 'root' (unchanged), 'commentary' (original text), 
@@ -46,6 +52,16 @@ def translate_commentaries(
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             raise ValueError("API key not provided and not found in .env file")
+    
+    # Initialize cache if enabled
+    cache = None
+    if use_cache:
+        try:
+            from .cache import TranslationCache
+            cache = TranslationCache(cache_dir=cache_dir, ttl=cache_ttl)
+            logger.info(f"Translation cache enabled: {cache_dir}")
+        except ImportError:
+            logger.warning("Cache module not found. Continuing without caching.")
     
     # Prepare results list with same length as input
     results = [None] * len(commentary_root_pairs)
@@ -93,7 +109,8 @@ def translate_commentaries(
                     pair,
                     target_language,
                     few_shot_examples,
-                    api_key
+                    api_key,
+                    cache
                 )
                 futures_to_idx[future] = idx
                 active_threads += 1
@@ -140,7 +157,8 @@ def translate_commentaries(
                             new_pair,
                             target_language,
                             few_shot_examples,
-                            api_key
+                            api_key,
+                            cache
                         )
                         futures_to_idx[new_future] = new_idx
                         active_threads += 1
@@ -155,7 +173,8 @@ def _translate_single_commentary(
     pair: Dict[str, str],
     target_language: str,
     few_shot_examples: List[Dict],
-    api_key: str
+    api_key: str,
+    cache=None
 ) -> str:
     """
     Helper function to translate a single commentary.
@@ -165,19 +184,35 @@ def _translate_single_commentary(
         target_language: Target language for translation
         few_shot_examples: Few-shot learning examples to guide translation
         api_key: Anthropic API key
+        cache: Optional translation cache
         
     Returns:
         Translated commentary text
     """
+    root_text = pair.get("root", "")
+    commentary_text = pair.get("commentary", "")
+    
+    # Check cache first if enabled
+    if cache is not None:
+        cached_translation = cache.get(root_text, commentary_text, target_language)
+        if cached_translation is not None:
+            logger.debug(f"Cache hit for commentary: {commentary_text[:30]}...")
+            return cached_translation
+    
     try:
         # Call the Claude API to translate the commentary
         translated_text = translate_with_claude(
-            root_text=pair.get("root", ""),
-            commentary_text=pair.get("commentary", ""),
+            root_text=root_text,
+            commentary_text=commentary_text,
             target_language=target_language,
             few_shot_examples=few_shot_examples,
             api_key=api_key
         )
+        
+        # Store in cache if enabled
+        if cache is not None:
+            cache.set(root_text, commentary_text, target_language, translated_text)
+            
         return translated_text
     except Exception as e:
         logger.error(f"Error translating commentary: {str(e)}")

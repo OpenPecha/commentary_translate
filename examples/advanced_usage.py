@@ -9,6 +9,7 @@ This example demonstrates:
 """
 
 import os
+import time
 from dotenv import load_dotenv
 from claude_translator import translate_commentaries
 
@@ -80,14 +81,17 @@ def main():
     if not api_key:
         raise ValueError("API key not found in environment variables. Please set ANTHROPIC_API_KEY.")
 
-    # Translate to Chinese with custom examples and more threads
-    print("Translating to Chinese with custom examples...")
+    # Translate to Chinese with custom examples, more threads, and caching
+    print("Translating to Chinese with custom examples and caching...")
     chinese_translations = translate_commentaries(
         commentary_root_pairs=sample_data,
         target_language="Chinese",
         few_shot_examples=custom_chinese_examples,
         num_threads=4,  # Use more threads for better performance
-        api_key=api_key
+        api_key=api_key,
+        use_cache=True,
+        cache_dir="./translation_cache",  # Cache directory path
+        cache_ttl=None  # No expiration
     )
     # Display the results
     print("\nChinese Translations:")
@@ -99,6 +103,30 @@ def main():
 
     print("\nNote: Empty commentaries remain empty in the output, as required.")
     print("Using more threads improves performance with larger datasets.")
+    
+    # Demonstrate cache hit by running the same translation again
+    print("\n\nRunning same translation again (should use cache)...")
+    start_time = time.time()
+    chinese_translations_cached = translate_commentaries(
+        commentary_root_pairs=sample_data,
+        target_language="Chinese",
+        few_shot_examples=custom_chinese_examples,
+        num_threads=4,
+        api_key=api_key,
+        use_cache=True,
+        cache_dir="./translation_cache"
+    )
+    end_time = time.time()
+    
+    print(f"\nSecond run completed in {end_time - start_time:.2f} seconds (should be faster due to cache hits)")
+    
+    # Show cache statistics
+    from claude_translator.cache import TranslationCache
+    cache = TranslationCache(cache_dir="./translation_cache")
+    cache_stats = cache.stats()
+    print(f"\nCache statistics: {cache_stats}")
+    
+    print("\nTo clear the cache, you can use: cache.clear()")
 
 if __name__ == "__main__":
     main()
