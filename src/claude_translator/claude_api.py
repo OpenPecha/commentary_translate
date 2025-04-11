@@ -35,6 +35,8 @@ def translate_with_claude(
     # Construct the messages with few-shot examples
     messages = []
     
+    # System prompt will be passed as a separate parameter
+    
     # Add few-shot examples as context
     for example in few_shot_examples:
         messages.append({
@@ -81,6 +83,7 @@ def translate_with_claude(
                 model="claude-3-opus-20240229",
                 max_tokens=4096,
                 temperature=0.2,  # Lower temperature for more precise translation
+                system="You are an expert translator of Tibetan Buddhist commentaries. Your task is to provide accurate, clear, and contextually appropriate translations while preserving the meaning and nuance of the original text. Follow these guidelines:\n\n1. Translate ONLY the commentary text, not the root text\n2. Maintain technical Buddhist terminology appropriately\n3. Preserve the logical flow and structure of the original\n4. When uncertain about a term, prefer the most contextually accurate translation\n5. Return only the translated text without explanations or meta-commentary",
                 messages=messages
             )
             
