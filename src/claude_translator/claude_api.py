@@ -84,8 +84,17 @@ def translate_with_claude(
                 messages=messages
             )
             
-            # Simply return the response text
-            return response.content[0].text
+            # Get the response text
+            translated_text = response.content[0].text
+            
+            # If we got an empty response, retry
+            if not translated_text.strip() and commentary_text.strip():
+                if attempt < max_retries - 1:
+                    sleep_time = retry_delay * (2 ** attempt)
+                    time.sleep(sleep_time)
+                    continue
+            
+            return translated_text
         
         except (anthropic.APIError, anthropic.RateLimitError) as e:
             if attempt < max_retries - 1:

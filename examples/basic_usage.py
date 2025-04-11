@@ -30,7 +30,7 @@ def main():
     print("Translating to English...")
     english_translations = translate_commentaries(
         commentary_root_pairs=sample_data,
-        target_language="German",
+        target_language="Mongolian",
         num_threads=2
     )
 
@@ -46,8 +46,8 @@ def main():
     print("\n\nTranslating to French...")
     french_translations = translate_commentaries(
         commentary_root_pairs=sample_data,
-        target_language="French",
-        num_threads=4
+        target_language="Bengali",
+        num_threads=2
     )
 
     # Display the results

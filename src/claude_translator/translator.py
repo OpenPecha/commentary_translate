@@ -134,11 +134,22 @@ def translate_commentaries(
                     
                     try:
                         translated_commentary = future.result()
-                        results[idx] = {
-                            "root": commentary_root_pairs[idx].get("root", ""),
-                            "commentary": commentary_root_pairs[idx].get("commentary", ""),
-                            "commentary_translation": translated_commentary
-                        }
+                        # Check if we have a valid translation
+                        if translated_commentary and translated_commentary.strip():
+                            results[idx] = {
+                                "root": commentary_root_pairs[idx].get("root", ""),
+                                "commentary": commentary_root_pairs[idx].get("commentary", ""),
+                                "commentary_translation": translated_commentary
+                            }
+                        else:
+                            # Empty translation but no error - log a warning
+                            logger.warning(f"Empty translation received for index {idx}")
+                            original_pair = commentary_root_pairs[idx]
+                            results[idx] = {
+                                "root": original_pair.get("root", ""),
+                                "commentary": original_pair.get("commentary", ""),
+                                "commentary_translation": ""  # Empty on failure
+                            }
                     except Exception as e:
                         logger.error(f"Translation failed at index {idx}: {str(e)}")
                         # Preserve original on failure
