@@ -91,8 +91,11 @@ def translate_with_claude(
             if not translated_text.strip() and commentary_text.strip():
                 if attempt < max_retries - 1:
                     sleep_time = retry_delay * (2 ** attempt)
+                    print(f"Empty translation received, retrying in {sleep_time} seconds (attempt {attempt+1}/{max_retries})")
                     time.sleep(sleep_time)
                     continue
+                else:
+                    print(f"Empty translation received after {max_retries} attempts, returning empty result")
             
             return translated_text
         
@@ -100,9 +103,11 @@ def translate_with_claude(
             if attempt < max_retries - 1:
                 # Exponential backoff
                 sleep_time = retry_delay * (2 ** attempt)
+                print(f"API error: {str(e)}, retrying in {sleep_time} seconds (attempt {attempt+1}/{max_retries})")
                 time.sleep(sleep_time)
                 continue
             else:
                 raise
         except Exception as e:
+            print(f"Unexpected error during API call: {str(e)}")
             raise

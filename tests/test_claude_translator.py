@@ -266,3 +266,42 @@ def test_translator_with_cache_disabled(mock_anthropic, temp_cache_dir):
     
     # API should be called twice since caching is disabled
     assert create_mock.call_count == 2
+
+@patch('claude_translator.claude_api.time.sleep')
+@patch('claude_translator.claude_api.anthropic.Anthropic')
+def test_retry_logic_for_empty_translations(mock_anthropic, mock_sleep):
+    """Test that the retry logic works properly for empty translations."""
+    # Setup mock
+    client_instance = MagicMock()
+    mock_anthropic.return_value = client_instance
+    
+    messages_mock = MagicMock()
+    client_instance.messages = messages_mock
+    
+    create_mock = MagicMock()
+    messages_mock.create = create_mock
+    
+    # Return empty string first, then valid translation
+    create_mock.side_effect = [
+        MockResponse(""),                  # First call - empty response
+        MockResponse("Valid translation")   # Second call - valid response
+    ]
+    
+    # Call with non-empty commentary
+    result = translate_commentaries(
+        commentary_root_pairs=[
+            {"root": "Test root", "commentary": "Test commentary that should not be empty"}
+        ],
+        target_language="English",
+        api_key="mock_api_key",
+        max_retries=3
+    )
+    
+    # Check that API was called twice (initial + 1 retry)
+    assert create_mock.call_count == 2
+    
+    # Check that sleep was called once for the retry
+    assert mock_sleep.call_count == 1
+    
+    # Check that we got the valid translation after retry
+    assert result[0]["commentary_translation"] == "Valid translation"

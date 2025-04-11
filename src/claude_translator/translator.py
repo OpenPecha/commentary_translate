@@ -22,7 +22,9 @@ def translate_commentaries(
     api_key: Optional[str] = None,
     use_cache: bool = True,
     cache_dir: str = "./translation_cache",
-    cache_ttl: Optional[int] = None
+    cache_ttl: Optional[int] = None,
+    max_retries: int = 3,
+    retry_delay: float = 2.0
 ) -> List[Dict[str, str]]:
     """
     Translate a list of Tibetan commentary-root pairs into the specified target language.
@@ -37,6 +39,8 @@ def translate_commentaries(
         use_cache: Whether to cache translation results (default: True)
         cache_dir: Directory to store cached translations
         cache_ttl: Time-to-live for cache entries in seconds (None = no expiration)
+        max_retries: Maximum number of retries for API calls and empty translations (default: 3)
+        retry_delay: Base delay between retries in seconds (will use exponential backoff)
         
     Returns:
         List of dictionaries with 'root' (unchanged), 'commentary' (original text), 
@@ -110,7 +114,9 @@ def translate_commentaries(
                     target_language,
                     few_shot_examples,
                     api_key,
-                    cache
+                    cache,
+                    max_retries,
+                    retry_delay
                 )
                 futures_to_idx[future] = idx
                 active_threads += 1
@@ -143,7 +149,13 @@ def translate_commentaries(
                             }
                         else:
                             # Empty translation but no error - log a warning
-                            logger.warning(f"Empty translation received for index {idx}")
+                            commentary = commentary_root_pairs[idx].get("commentary", "")
+                            if commentary.strip():
+                                logger.warning(f"Empty translation received for non-empty commentary at index {idx}")
+                                logger.info(f"Original commentary: {commentary[:100]}...")
+                            else:
+                                logger.info(f"Empty translation returned for empty commentary at index {idx} (expected)")
+                                
                             original_pair = commentary_root_pairs[idx]
                             results[idx] = {
                                 "root": original_pair.get("root", ""),
@@ -169,7 +181,9 @@ def translate_commentaries(
                             target_language,
                             few_shot_examples,
                             api_key,
-                            cache
+                            cache,
+                            max_retries,
+                            retry_delay
                         )
                         futures_to_idx[new_future] = new_idx
                         active_threads += 1
@@ -185,7 +199,9 @@ def _translate_single_commentary(
     target_language: str,
     few_shot_examples: List[Dict],
     api_key: str,
-    cache=None
+    cache=None,
+    max_retries: int = 3,
+    retry_delay: float = 2.0
 ) -> str:
     """
     Helper function to translate a single commentary.
@@ -196,6 +212,8 @@ def _translate_single_commentary(
         few_shot_examples: Few-shot learning examples to guide translation
         api_key: Anthropic API key
         cache: Optional translation cache
+        max_retries: Maximum number of retries for API calls and empty translations
+        retry_delay: Base delay between retries in seconds
         
     Returns:
         Translated commentary text
@@ -217,11 +235,19 @@ def _translate_single_commentary(
             commentary_text=commentary_text,
             target_language=target_language,
             few_shot_examples=few_shot_examples,
-            api_key=api_key
+            api_key=api_key,
+            max_retries=max_retries,
+            retry_delay=retry_delay
         )
         
-        # Store in cache if enabled
-        if cache is not None:
+        # Validate the translation before caching
+        if not translated_text.strip() and commentary_text.strip():
+            logger.warning(f"Empty translation received for non-empty commentary: {commentary_text[:50]}...")
+            # Don't cache empty translations for non-empty commentary
+            return ""
+        
+        # Store in cache if enabled and translation is valid
+        if cache is not None and (translated_text.strip() or not commentary_text.strip()):
             cache.set(root_text, commentary_text, target_language, translated_text)
             
         return translated_text
