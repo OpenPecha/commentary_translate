@@ -80,7 +80,7 @@ def translate_with_claude(
     for attempt in range(max_retries):
         try:
             response = client.messages.create(
-                model="claude-3-opus-20240229",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=4096,
                 temperature=0.2,  # Lower temperature for more precise translation
                 system="You are an expert translator of Tibetan Buddhist commentaries. Your task is to provide accurate, clear, and contextually appropriate translations while preserving the meaning and nuance of the original text. Follow these guidelines:\n\n1. Translate ONLY the commentary text, not the root text\n2. Maintain technical Buddhist terminology appropriately\n3. Preserve the logical flow and structure of the original\n4. When uncertain about a term, prefer the most contextually accurate translation\n5. Return only the translated text without explanations or meta-commentary",
